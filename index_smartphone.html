@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>投票 - レイアウト完全固定＆全画面バランス調整版</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f4f6f9;
+  --card-bg: #ffffff;
+  --text: #2c3e50;
+  --text-light: #64748b;
+  --muted: #cbd5e1;
+  --grid-line: #e2e8f0;
+  --c-a: #ec407a;
+  --c-b: #2980b9;
+  --c-c: #27ae60;
+  --c-d: #f39c12;
+  --shadow: 0 10px 40px rgba(0,0,0,0.06);
+}
+
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+}
+
+.wrap { width: 100vw; max-width: 100vw; aspect-ratio: 16/9; max-height: 100vh; padding: 2vw; }
+.card {
+  background: var(--card-bg); width: 100%; height: 100%;
+  border-radius: 24px; box-shadow: var(--shadow); padding: 3% 4%;
+  display: flex; flex-direction: column; position: relative; overflow: hidden;
+}
+
+.screen {
+  display: none; flex-direction: column; flex: 1; width: 100%; height: 100%;
+  opacity: 0; transition: opacity 0.4s ease;
+}
+.screen.show { display: flex; opacity: 1; }
+
+/* ── 1. 投票画面 ── */
+#s-vote { justify-content: space-between; }
+.q-head { text-align: center; margin-top: 2vh; }
+.q-number { font-size: clamp(14px, 1.8vw, 24px); font-weight: 900; color: var(--muted); letter-spacing: 0.1em; }
+.q-title { font-size: clamp(24px, 3.5vw, 48px); font-weight: 900; color: var(--text); line-height: 1.3; white-space: pre-line; margin-top: 1vh;}
+
+.choices-wrap { display: flex; justify-content: center; align-items: center; flex: 1; }
+
+/* ── 画面下部のカウント ── */
+.bottom-area {
+  display: flex; flex-direction: column; align-items: center; gap: 1.5vh;
+  margin-top: 2vh; position: relative;
+}
+.live-counts-container {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; padding: 1.5vh 0;
+  border-top: 2px solid var(--grid-line);
+}
+.live-counts { display: flex; gap: 6vw; align-items: center; justify-content: center; }
+.live-count-item { font-size: clamp(18px, 2.5vw, 36px); font-weight: 900; transition: transform 0.1s; display:flex; align-items:baseline; gap:0.5vw;}
+.live-count-item small { font-size: 0.6em; color: var(--text-light); }
+
+.undo-btn {
+  position: absolute; bottom: 0; left: 0;
+  background: #f1f5f9; color: var(--text); font-weight: 700; font-size: clamp(12px, 1.5vw, 20px);
+  border: none; border-radius: 99px; padding: 1.5vh 2.5vw; cursor: pointer; transition: 0.2s;
+  display: flex; align-items: center; gap: 0.5vw; z-index: 10;
+}
+.undo-btn:active { transform: scale(0.95); background: #e2e8f0; }
+.undo-btn:disabled { opacity: 0; pointer-events: none; } 
+
+.close-btn {
+  position: absolute; bottom: 0; right: 0;
+  background: var(--text); color: #fff; font-weight: 700; font-size: clamp(12px, 1.5vw, 20px);
+  border: none; border-radius: 99px; padding: 1.5vh 2.5vw; cursor: pointer; transition: 0.2s;
+  display: flex; align-items: center; gap: 0.5vw; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+.close-btn:active { transform: scale(0.95); }
+.close-btn:disabled { opacity: 0; pointer-events: none; }
+
+
+/* ── q-sub ── */
+.q-sub { font-size: clamp(12px, 1.4vw, 18px); font-weight: 700; color: var(--muted); margin-top: 0.5vh; text-align: center; }
+
+/* ── 投票画面: 画像なし・大きな丸バッジ＋テキスト ── */
+.choices { display: flex; justify-content: center; gap: 4vw; align-items: flex-end; flex: 1; padding: 2vh 0 1vh; }
+.choice {
+  display: flex; flex-direction: column; align-items: center; gap: 2vh;
+  cursor: pointer; background: none; border: none; outline: none;
+  -webkit-tap-highlight-color: transparent; transition: transform 0.15s;
+  width: clamp(100px, 16vw, 200px);
+}
+.choice-circle {
+  width: clamp(70px, 9vw, 130px); height: clamp(70px, 9vw, 130px);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: clamp(28px, 4vw, 56px); font-weight: 900;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.22), 0 3px 6px rgba(0,0,0,0.12);
+  transition: transform 0.15s;
+}
+.choice-label { font-size: clamp(20px, 2.8vw, 40px); font-weight: 700; color: var(--text); text-align: center; line-height: 1.3; min-height: 1.3em; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+.choice:active .choice-circle { transform: scale(0.92); }
+.choice.flash .choice-circle { transform: scale(1.1); filter: brightness(0.85); }
+
+/* ── 結果画面: 問題文ヘッダー ── */
+#s-result { background: #ffffff; border-radius: 24px; }
+.r-question-head { text-align: center; margin-bottom: 0; flex-shrink: 0; }
+.r-q-title { font-size: clamp(20px, 2.8vw, 40px); font-weight: 900; color: var(--text); margin-top: 0.3vh; }
+.r-total-label { font-size: clamp(13px, 1.6vw, 22px); font-weight: 700; color: var(--text-light); margin-top: 0.4vh; }
+.r-total-label b { color: var(--text); font-size: 1.2em; font-variant-numeric: tabular-nums; }
+
+/* ── 縦棒グラフ ── */
+.vbar-layout {
+  display: flex; gap: 2vw; justify-content: center; align-items: stretch;
+  flex: 1; width: 100%; padding: 1vh 4vw 0; min-height: 0;
+}
+.vbar-col {
+  display: flex; flex-direction: column; align-items: center; gap: 0.5vh;
+  flex: 1; max-width: 20%; min-height: 0;
+}
+/* 棒グラフ本体ラッパー：縦いっぱいに伸ばしてtrackを確実に高さ確保 */
+.vbar-graph-wrap {
+  flex: 1; width: 100%; position: relative; min-height: 80px;
+}
+/* track：ラッパーに対して絶対配置で確実にfull-height */
+.vbar-track {
+  position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 55%; height: 100%;
+  background: var(--grid-line); border-radius: 8px 8px 4px 4px; overflow: hidden;
+}
+.vbar-fill {
+  position: absolute; bottom: 0; left: 0;
+  width: 100%; height: 0%;
+  border-radius: 8px 8px 4px 4px;
+  transition: height 2.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* カップ横一列：棒グラフの上に固定 */
+.vbar-cup {
+  width: clamp(44px, 6vw, 80px); object-fit: contain; flex-shrink: 0;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.15));
+}
+/* %：棒グラフの上端付近に表示 */
+.vbar-pct {
+  font-size: clamp(13px, 1.8vw, 26px); font-weight: 900; color: var(--text);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.vbar-circle {
+  width: clamp(26px, 3.2vw, 46px); height: clamp(26px, 3.2vw, 46px);
+  border-radius: 50%; color: #fff; font-weight: 900;
+  font-size: clamp(12px, 1.5vw, 22px);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.vbar-label {
+  font-size: clamp(11px, 1.4vw, 20px); font-weight: 700; color: var(--text);
+  text-align: center; line-height: 1.2; flex-shrink: 0;
+}
+
+/* ── 2. 結果画面 (大原則：縦2分割レイアウト) ── */
+.result-layout { 
+  display: flex; gap: 3vw; width: 100%; height: 100%; align-items: stretch; padding: 1vh 0; 
+}
+
+/* 左側：元画像・質問表示エリア（1枚目の幅をしっかり確保） */
+.result-left {
+  flex: 0.9; background: #fafafa; border-radius: 20px; border: 1px solid #f1f5f9;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 2vw; text-align: center;
+}
+
+/* 右側：結果グラフエリア */
+.result-right {
+  flex: 2.1; display: flex; flex-direction: column; height: 100%; position: relative;
+  /* 上下の余白を均等にして、画面全体にパンパンに広げる */
+  padding: 7vh 0 3vh 0; 
+}
+
+/* グラフ背景の縦目盛り線（右画面全体に広げる） */
+.r-grid-container {
+  position: absolute; top: 6vh; bottom: 3vh; left: 14vw; right: 8vw; 
+  pointer-events: none; z-index: 0;
+}
+.r-grid-line {
+  position: absolute; top: 0; bottom: 0; width: 1px; background-color: var(--grid-line);
+}
+.r-grid-label {
+  position: absolute; top: -4.5vh; transform: translateX(-50%);
+  font-size: clamp(12px, 1.4vw, 18px); font-weight: 700; color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+}
+
+/* グラフ行全体（間隔を広げて縦いっぱいに大きく配置） */
+.r-rows { 
+  display: flex; flex-direction: column; justify-content: space-between; 
+  height: 100%; width: 100%; position: relative; z-index: 1; 
+}
+.r-row { 
+  display: flex; align-items: center; width: 100%;
+  opacity: 0; transform: translateX(15px);
+  animation: slideIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.r-row:nth-child(1) { animation-delay: 0.1s; }
+.r-row:nth-child(2) { animation-delay: 0.2s; }
+.r-row:nth-child(3) { animation-delay: 0.3s; }
+.r-row:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes slideIn {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* 【完全固定】左側：選択肢エリア（幅を完全に固定し、1行で美しく並列に揃える） */
+.r-choice-info {
+  display: flex; align-items: center; justify-content: flex-start; gap: 1vw;
+  width: 14vw; flex-shrink: 0;
+}
+.r-circle {
+  width: clamp(26px, 3.2vw, 45px); height: clamp(26px, 3.2vw, 45px);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: clamp(12px, 1.5vw, 20px); font-weight: 900; flex-shrink: 0;
+}
+.r-label-text {
+  font-size: clamp(14px, 1.8vw, 24px); font-weight: 700; color: var(--text);
+  white-space: nowrap; text-align: left;
+}
+
+/* 中央：バーグラフエリア（横幅を最大限大きく） */
+.r-bar-area {
+  flex: 1; display: flex; align-items: center; position: relative;
+  margin-right: 8vw; 
+}
+.r-bar-track {
+  width: 100%; height: clamp(40px, 6vh, 70px); background: transparent;
+  display: flex; align-items: center; position: relative;
+}
+.r-bar { 
+  height: 100%; width: 0%; border-radius: 4px;
+  transition: width 2.5s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+  display: flex; align-items: center; position: relative;
+}
+
+/* 【基本表記】バーの中のパーセンテージ（バーが短くても左端に常時表示されるよう調整） */
+.r-bar-inner-text {
+  color: #ffffff; font-weight: 900; font-size: clamp(14px, 2vw, 28px);
+  white-space: nowrap; position: absolute; left: 1vw; /* 左端に固定して常時表示 */
+  text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+/* バーの先っちょに追従する得票数エリア */
+.r-bar-stats-edge {
+  position: absolute; left: 0; 
+  display: flex; align-items: baseline; padding-left: 0.8vw;
+  white-space: nowrap; pointer-events: none;
+}
+.r-count-edge {
+  font-size: clamp(14px, 2vw, 28px); font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.r-count-edge span { font-size: 0.6em; color: var(--text-light); font-weight: 500; margin-left: 1px; }
+
+/* 1位の棒の真上に出るポップアップ */
+.voice-popup {
+  position: absolute; top: 3%; left: 3%;
+  opacity: 0; pointer-events: none;
+  transform: translateY(-8px);
+  transition: opacity 0.4s, transform 0.4s cubic-bezier(0.2,0.8,0.2,1);
+  z-index: 20;
+}
+.voice-popup.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.voice-popup-arrow {
+  display: block;
+  width: 0; height: 0;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-top: 14px solid #fff3cd;
+  margin-left: 2vw;
+}
+.voice-popup-btn {
+  background: #fff3cd; color: #5a3e00; border: 2.5px solid #f5c842; border-radius: 16px;
+  padding: 1.4vh 2.2vw; font-size: clamp(14px, 1.8vw, 24px); font-weight: 900;
+  cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.13); transition: 0.15s;
+  white-space: nowrap;
+}
+.voice-popup-btn:active { transform: scale(0.96); }
+
+/* ── 3. 最多の声画面 ── */
+.voice-layout { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; position: relative;}
+.voice-title { font-size: clamp(20px, 3vw, 40px); font-weight: 900; margin-bottom: 4vh; color: var(--text); }
+.voice-content { display: flex; align-items: center; justify-content: center; gap: 6vw; width: 100%; }
+.silhouette { font-size: clamp(100px, 15vw, 200px); line-height: 1; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.05)); }
+.bubbles { display: grid; grid-template-columns: 1fr 1fr; gap: 2vw; flex: 1; max-width: 60%; }
+.bubble { background: #fafafa; padding: 1.5vw; border-radius: 16px; font-weight: 500; font-size: clamp(14px, 1.8vw, 24px); border: 1px solid #f0f0f0; position: relative; color: var(--text);}
+.bubble::before { content: ''; position: absolute; top: 50%; left: -10px; transform: translateY(-50%); border-width: 10px 10px 10px 0; border-style: solid; border-color: transparent #e2e8f0 transparent transparent; }
+.bubble::after { content: ''; position: absolute; top: 50%; left: -8px; transform: translateY(-50%); border-width: 8px 8px 8px 0; border-style: solid; border-color: transparent #fafafa transparent transparent; }
+
+.reset-btn { position: absolute; top: 0; right: 0; background: none; border: 1px solid var(--muted); color: var(--text-light); border-radius: 99px; padding: 1vh 2vw; font-weight: 500; cursor: pointer; z-index: 20;}
+.voice-reset-wrap { display: flex; flex-direction: column; align-items: center; gap: 1vh; margin-top: 8vh; opacity: 0; transform: translateY(12px); transition: opacity 0.5s, transform 0.5s cubic-bezier(0.2,0.8,0.2,1); }
+.voice-reset-wrap.show { opacity: 1; transform: translateY(0); }
+.voice-reset-btn {
+  margin-top: 0; padding: 1.8vh 4vw;
+  background: var(--text); color: #fff;
+  border: none; border-radius: 99px;
+  font-size: clamp(15px, 2vw, 28px); font-weight: 900;
+  cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  opacity: 1; transform: none;
+  flex-shrink: 0;
+}
+.voice-reset-btn.show { opacity: 1; transform: translateY(0); }
+.voice-reset-btn:active { transform: scale(0.97); }
+
+/* 自動遷移プログレスバー */
+.timeout-bar-wrap {
+  position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: transparent; z-index: 50;
+}
+.timeout-bar {
+  height: 100%; width: 0%; background: var(--text-light); transition: width linear; opacity: 0.3;
+}
+
+/* ミニサイズ用ヘルパー（左の2分割エリア用） */
+.mini-choices { display: flex; gap: 2vw; margin-top: 3vh; transform: scale(0.85); transform-origin: top center;}
+.mini-choice { display: flex; flex-direction: column; align-items: center; gap: 1vh; }
+.mini-choice .choice-label { font-size: clamp(14px, 1.8vw, 24px); color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+
+  <div class="timeout-bar-wrap"><div class="timeout-bar" id="timeout-bar"></div></div>
+
+  <div class="screen show" id="s-vote">
+    <div class="q-head">
+      <p class="q-number" id="q-number"></p>
+      <p class="q-title" id="q-title"></p>
+    <p class="q-sub">画面をタップして選んでね</p>
+    </div>
+    
+    <div class="choices-wrap">
+      <div class="choices" id="choices"></div>
+    </div>
+
+    <div class="bottom-area">
+        <button class="undo-btn" id="undo-btn" onclick="undoVote()" disabled>リセット</button>
+        <div class="live-counts-container">
+            <div class="live-counts" id="live-counts"></div>
+        </div>
+        <button class="close-btn" id="close-btn" onclick="finishVote()" disabled>結果を見る ➡</button>
+    </div>
+  </div>
+
+  <div class="screen" id="s-result">
+    <button class="reset-btn" onclick="resetAll()">最初に戻る ↩</button>
+    <!-- 問題文 -->
+    <div class="r-question-head">
+      <p class="q-number" id="r-number"></p>
+      <p class="r-q-title" id="r-title"></p>
+      <p class="r-total-label">総得票数 <b id="r-total-num">0</b> 票</p>
+    </div>
+    <!-- 縦棒グラフ全体 -->
+    <div class="vbar-layout" id="vbar-layout">
+      <!-- JSで4列を生成 -->
+    </div>
+    <div class="voice-popup" id="voice-popup">
+      <button class="voice-popup-btn" onclick="showVoice()">1位を選んだ人の声 💬</button>
+      <div class="voice-popup-arrow"></div>
+    </div>
+  </div>
+
+  <div class="screen" id="s-voice">
+    <div class="voice-layout">
+      <div class="voice-title" id="voice-screen-title">1位を選んだ人の声</div>
+      <div class="voice-content">
+        <div class="silhouette">👤</div>
+        <div class="bubbles" id="voice-bubbles"></div>
+      </div>
+      <div class="voice-reset-wrap" id="voice-reset-wrap">
+        <button class="voice-reset-btn" id="voice-reset-btn" onclick="resetAll()">
+          次の人のために結果を隠す ↩
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div></div>
+
+<script>
+const MAX_VOTES = 10; 
+const TIMEOUT_SEC = 60;
+const STORAGE_KEY = 'entaku_xxx_votes';
+
+const QUESTION = { number: 'Q', title: `5分暇になってスマホを見る時\n何する？` };
+
+const CUP_IMGS = ['', '', '', ''];
+const CHOICES = [
+  { letter:'A', label:'インスタ開く',     color:'var(--c-a)', img: '' },
+  { letter:'B', label:'TikTok開く',     color:'var(--c-b)', img: '' },
+  { letter:'C', label:'X開く',         color:'var(--c-c)', img: '' },
+  { letter:'D', label:'LINE開く',      color:'var(--c-d)', img: '' },
+];
+
+const VOICE_DATA = {
+  0: ["「とりあえずインスタ開くのが条件反射になってる」", "「ストーリー見てたら5分が30分になってた」", "「フォローしてない人のリールまで流し見して現実に戻れなくなる」", "「気づいたら知らない犬のアカウントをフォローしていた」"],
+  1: ["「TikTok開いたら最後、時間が消える」", "「気づいたら深夜2時になってる定番ルート」", "「5分のつもりがおすすめ欄の沼にハマって1時間経ってた」", "「音量下げ忘れてバスで爆音が流れた」"],
+  2: ["「とりあえずXのタイムラインを流し見する」", "「誰かが怒ってるのを眺めて現実逃避する」", "「5分でトレンドを全部把握する謎の義務感がある」", "「知らない人の口論に巻き込まれかけて静かに閉じた」"],
+  3: ["「LINEの未読を開かずにアイコンだけ見る」", "「既読つけたら返さないといけない気がして開けない」", "「グループLINEが99+になってて見て見ぬふりをした」", "「返信しようとしたら寝落ちしてたことに翌朝気づいた」"]
+};
+
+let sessionVotes = CHOICES.map(() => 0);
+let sessionTotal = 0;
+let voteHistory = [];
+
+let globalVotes = [0, 0, 0, 0];
+let globalTotal = 0;
+
+let isClosed = false;
+let timeoutId = null;
+
+const $ = id => document.getElementById(id);
+const scr = id => {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('show');
+    setTimeout(() => { if(!s.classList.contains('show')) s.style.display = 'none'; }, 300);
+  });
+  const target = $(id);
+  target.style.display = 'flex';
+  setTimeout(() => target.classList.add('show'), 50);
+};
+
+function loadGlobalData() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length === CHOICES.length) {
+        globalVotes = parsed;
+      } else {
+        globalVotes = [0, 0, 0, 0];
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch(e) {
+      globalVotes = [0, 0, 0, 0];
+      localStorage.removeItem(STORAGE_KEY);
+    }
+    globalTotal = globalVotes.reduce((sum, val) => sum + val, 0);
+  } else {
+    globalVotes = [0, 0, 0, 0];
+    globalTotal = 0;
+  }
+}
+
+function animateValue(obj, start, end, duration, formatStr) {
+  let startTimestamp = null;
+  const step = (timestamp) => {
+    if (!startTimestamp) startTimestamp = timestamp;
+    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+    const easeProgress = 1 - Math.pow(1 - progress, 3);
+    const currentVal = Math.floor(easeProgress * (end - start) + start);
+    
+    if (formatStr === '%') {
+      obj.innerHTML = `${currentVal}%`;
+    } else {
+      obj.innerHTML = formatStr === '票' ? `${currentVal}<small>票</small>` : `${currentVal.toLocaleString()}<span>票</span>`;
+    }
+    
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    } else {
+      if (formatStr === '%') {
+        obj.innerHTML = `${end}%`;
+      } else {
+        obj.innerHTML = formatStr === '票' ? `${end}<small>票</small>` : `${end.toLocaleString()}<span>票</span>`;
+      }
+    }
+  };
+  window.requestAnimationFrame(step);
+}
+
+function animateEdgePosition(obj, startPct, endPct, duration) {
+  let startTimestamp = null;
+  const step = (timestamp) => {
+    if (!startTimestamp) startTimestamp = timestamp;
+    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+    const easeProgress = 1 - Math.pow(1 - progress, 3);
+    const currentPct = easeProgress * (endPct - startPct) + startPct;
+    
+    obj.style.left = currentPct + '%';
+    
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    } else {
+      obj.style.left = endPct + '%';
+    }
+  };
+  window.requestAnimationFrame(step);
+}
+
+function startTimer() {
+  clearTimeout(timeoutId);
+  const bar = $('timeout-bar');
+  bar.style.transition = 'none';
+  bar.style.width = '0%';
+  
+  setTimeout(() => {
+    bar.style.transition = `width ${TIMEOUT_SEC}s linear`;
+    bar.style.width = '100%';
+  }, 50);
+
+  timeoutId = setTimeout(() => { resetAll(); }, TIMEOUT_SEC * 1000);
+}
+
+function stopTimer() {
+  clearTimeout(timeoutId);
+  const bar = $('timeout-bar');
+  bar.style.transition = 'none';
+  bar.style.width = '0%';
+}
+
+function init(){
+  loadGlobalData();
+
+  $('q-number').textContent = QUESTION.number;
+  $('q-title').innerHTML = QUESTION.title.replace('\n', '<br>');
+
+  const box = $('choices');
+  const countsBox = $('live-counts');
+  box.innerHTML = '';
+  countsBox.innerHTML = '';
+
+  CHOICES.forEach((c, i)=>{
+    const btn = document.createElement('button');
+    btn.className = 'choice';
+    btn.id = 'choice-'+i;
+    btn.innerHTML = `
+      <span class="choice-circle" style="background:${c.color}">${c.letter}</span>
+      <span class="choice-label">${c.label.replace(/\n/g, '<br>')}</span>
+    `;
+    btn.addEventListener('click', ()=>castVote(i));
+    box.appendChild(btn);
+
+    countsBox.innerHTML += `<span class="live-count-item" id="lc-${i}" style="color:${c.color}">${c.letter} <span style="color:var(--text);">${sessionVotes[i]}<small>票</small></span></span>`;
+  });
+  updateStatus();
+  stopTimer();
+}
+
+function castVote(i){
+  if(isClosed || sessionTotal >= MAX_VOTES) return;
+
+  sessionVotes[i]++;
+  sessionTotal++;
+  voteHistory.push(i);
+
+  const countEl = $(`lc-${i}`);
+  countEl.innerHTML = `${CHOICES[i].letter} <span style="color:var(--text);">${sessionVotes[i]}<small>票</small></span>`;
+  countEl.style.transform = 'scale(1.3)';
+  setTimeout(() => countEl.style.transform = 'scale(1)', 150);
+
+  const el = $('choice-'+i);
+  el.classList.add('flash');
+  setTimeout(()=>el.classList.remove('flash'), 150);
+
+  updateStatus();
+
+  if(sessionTotal >= MAX_VOTES){
+    finishVote();
+  }
+}
+
+function undoVote(){
+  if(isClosed) return;
+  sessionVotes = CHOICES.map(() => 0);
+  sessionTotal = 0;
+  voteHistory = [];
+  CHOICES.forEach((c, i) => {
+    $(`lc-${i}`).innerHTML = `${c.letter} <span style="color:var(--text);">0<small>票</small></span>`;
+  });
+  updateStatus();
+}
+
+function updateStatus(){
+  $('undo-btn').disabled = voteHistory.length === 0;
+  $('close-btn').disabled = sessionTotal === 0;
+}
+
+function finishVote() {
+  if(sessionTotal > 0) {
+    isClosed = true;
+    $('undo-btn').disabled = true;
+    $('close-btn').disabled = true;
+
+    for(let i=0; i<4; i++) {
+      globalVotes[i] += sessionVotes[i];
+    }
+    globalTotal += sessionTotal;
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(globalVotes));
+
+    setTimeout(buildResult, 400);
+  }
+}
+
+function buildResult(){
+  $('r-number').textContent = QUESTION.number;
+  $('r-title').innerHTML = QUESTION.title.replace('\n', '　');
+  $('r-total-num').textContent = globalTotal.toLocaleString();
+
+  const layout = $('vbar-layout');
+  layout.innerHTML = '';
+  CHOICES.forEach((c, i) => {
+    layout.innerHTML += `
+      <div class="vbar-col" id="vcol-${i}">
+        <div class="vbar-pct" id="vpct-${i}">0%</div>
+        <div class="vbar-graph-wrap" id="vwrap-${i}">
+          <div class="vbar-track">
+            <div class="vbar-fill" id="vfill-${i}" style="background:${c.color}"></div>
+          </div>
+        </div>
+        <div class="vbar-circle" style="background:${c.color}">${c.letter}</div>
+        <div class="vbar-label">${c.label}</div>
+      </div>`;
+  });
+
+  scr('s-result');
+  startTimer();
+
+  setTimeout(() => {
+    CHOICES.forEach((c, i) => {
+      const pct   = globalTotal > 0 ? Math.round(globalVotes[i] / globalTotal * 100) : 0;
+      const fill  = $('vfill-'+i);
+      const pctEl = $('vpct-'+i);
+      fill.style.height = pct + '%';
+      animateValue(pctEl, 0, pct, 2200, '%');
+    });
+  }, 350);
+
+  let winnerIndex = globalVotes.indexOf(Math.max(...globalVotes));
+  if (winnerIndex < 0) winnerIndex = 0;
+  const bubblesBox = $('voice-bubbles');
+  bubblesBox.innerHTML = '';
+  (VOICE_DATA[winnerIndex] || VOICE_DATA[0]).slice(0,4).forEach(text => {
+    bubblesBox.innerHTML += `<div class="bubble">${text}</div>`;
+  });
+  const title = $('voice-screen-title');
+  if (title) title.textContent = '1位を選んだ人の声';
+  // 1位のカラムの上にポップアップを配置
+  // fillの先端（カップの上）にポップアップを配置 — アニメ完了後に計算
+  setTimeout(() => {
+    const popup = $('voice-popup');
+    const winnerCol = $('vcol-' + winnerIndex);
+    const resultScreen = $('s-result');
+    if (!winnerCol || !popup || !resultScreen) { popup && popup.classList.add('show'); return; }
+    const screenRect = resultScreen.getBoundingClientRect();
+    const colRect    = winnerCol.getBoundingClientRect();
+    const fill       = $('vfill-' + winnerIndex);
+    const fillRect   = fill ? fill.getBoundingClientRect() : null;
+    // fillの上端（棒グラフ先端）をscreenからの相対座標で取得
+    const fillTop = fillRect ? (fillRect.top - screenRect.top) : (colRect.top - screenRect.top);
+    popup.style.top  = (fillTop - popup.offsetHeight - 10) + 'px';
+    popup.style.left = (colRect.left - screenRect.left + colRect.width / 2) + 'px';
+    popup.classList.add('show');
+  }, 2500);
+}
+
+let voiceCountdownId = null;
+function showVoice() {
+  const wrap = $('voice-reset-wrap');
+  if (wrap) wrap.classList.remove('show');
+  clearInterval(voiceCountdownId);
+  scr('s-voice');
+  startTimer();
+  setTimeout(() => {
+    if (wrap) wrap.classList.add('show');
+    // カウントダウン
+    voiceCountdownId = setTimeout(() => { resetAll(); }, 10000);
+  }, 1000);
+}
+
+function resetAll() {
+  sessionVotes = CHOICES.map(()=>0);
+  sessionTotal = 0;
+  voteHistory = [];
+  isClosed = false;
+  const _p = $('voice-popup'); if(_p){ _p.classList.remove('show'); }
+  clearInterval(typeof voiceCountdownId !== 'undefined' ? voiceCountdownId : null);
+  const _rw = $('voice-reset-wrap'); if(_rw){ _rw.classList.remove('show'); }
+  stopTimer();
+  init();
+  scr('s-vote');
+}
+
+init();
+</script>
+</body>
+</html>
